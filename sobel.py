@@ -10,12 +10,15 @@ def main(argv):
     kernel = Kernel(compilerPath, kernelName);
     kernel.compile();
 
-    mem = kernel.arguments;
-    for i in range(0,len(mem)):
-        print mem[i].location1, mem[i].location2, mem[i].argType;
     
-    inn = np.zeros([1,100]);
+    inn = np.zeros([10,20]);
     inn = 100*inn;
+    out = np.zeros([10,20]);
+
+    kernel.setArg(0,inn);
+    kernel.setArg(1,out);
+
+    kernel.enqueue(2,[0,0],[10,20]);
 
 
 def parseInput(argv): 
