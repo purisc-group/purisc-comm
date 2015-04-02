@@ -60,6 +60,9 @@ def send(dataToSend, mem_id, sock):
                 end = len(dataToSend);
 
             packet_to_send = dataToSend[start:end];
+            while(len(packet_to_send) < 1024):
+                packet_to_send += "\x00";
+
             length = encode(len(packet_to_send),2);
             print len(packet_to_send)
 
