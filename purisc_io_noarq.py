@@ -29,11 +29,7 @@ def main(argv):
             packet_data.append(encode(data,4)); 
 
         dataToSend = "".join(packet_data);
-        n = len(dataToSend)/1024 + (len(dataToSend) % 1024 > 0);
-        goBack = n;
-        while goBack > 0: 
-            send(dataToSend, mem_id, sock, goBack);
-            goBack = recv(sock);
+        send(dataToSend, mem_id, sock);
 
 def recv(sock):
     data =  'idummy';
@@ -44,21 +40,21 @@ def recv(sock):
     return message;
 
 
-def send(dataToSend, mem_id, sock, goBack):
+def send(dataToSend, mem_id, sock):
 
     #determine length
     length_total = len(dataToSend)
     total_packs = length_total/1024 + (length_total % 1024 > 0);
-    
-    startnum = total_packs - goBack;
-    packet_cnt = encode(goBack,2);
+    packet_cnt = encode(total_packs,2);
 
+    print total_packs
+    #send packets
 
     for iteration in range(0,total_packs):
 
             packet_num = encode(iteration,2);
 
-            start = startnum*1024 + iteration*1024
+            start = iteration*1024
             end = start + 1024
             if iteration == (total_packs - 1):
                 end = len(dataToSend);

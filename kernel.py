@@ -58,7 +58,7 @@ class Kernel:
                     globalMemory[nextGlobal] = lin[i];
                 
         #globalMemory = np.zeros(10, dtype=np.int);
-        p = Popen(["python","purisc_io.py"], stdin=PIPE);
+        p = Popen(["python","purisc_io_noarq.py"], stdin=PIPE);
         dataBufferArr = [];
 
 
