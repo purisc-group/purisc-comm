@@ -33,13 +33,22 @@ def main(argv):
         goBack = n;
         while goBack > 0: 
             send(dataToSend, mem_id, sock, goBack);
-            goBack = recv(sock);
+            resp = recv(sock);
+            goBack = int(resp[:2]);
 
-def recv(sock):
-    data =  'idummy';
-    while data:
-        data = sock.recv(64);
-        message += data; 
+        #receive result
+
+def recvData(sock):
+    message = '';
+    while len(message) < 1024:
+        message += sock.recv(1024);
+
+    return message;
+
+def recvArq(sock):
+    message = '';
+    while len(message) < 64:
+        message += sock.recv(64);
 
     return message;
 
