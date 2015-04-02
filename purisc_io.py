@@ -13,6 +13,7 @@ def main(argv):
         infile = open(infileStr, 'w');
 
     sock = socket(AF_PACKET, SOCK_RAW)
+    sock.settimeout(0.00002288);
     sock.bind(("eth0", 0))
             
     for i in range(0,5):
@@ -32,11 +33,39 @@ def main(argv):
         n = len(dataToSend)/1024 + (len(dataToSend) % 1024 > 0);
         goBack = n;
         while goBack > 0: 
-            send(dataToSend, mem_id, sock, goBack);
+            sendData(dataToSend, mem_id, sock, goBack);
             resp = recv(sock);
-            goBack = int(resp[:2]);
+            goBack = decode(resp[:2]);
 
-        #receive result
+
+    #receive result
+    messageBuff = [];
+    first = recvData(sock);
+    M = decode(first[22:24]);
+    messageBuff.append(first[24:]);
+    expected = 1;
+    while len(messageBuff) < M:
+        retry = True;
+        while retry:
+            try:
+                nextPkt = recvData(sock);
+                retry = False;
+            except timeout:
+                sendArq(sock, M - expected);
+
+        pktN = decode(nextPkt[20:22]);
+        if pktN != expected:
+            sendArg(sock, M - expected);
+        else:
+            messageBuff.append(nextPkt[24:]);
+            expected += 1;
+
+    message = ''.join(messageBuff);
+    result = [];
+    for i in range(0,len(message)/4):
+        result.append(str(decode(message[i:i+4])));
+
+    print '\n'.join(result);
 
 def recvData(sock):
     message = '';
@@ -53,7 +82,7 @@ def recvArq(sock):
     return message;
 
 
-def send(dataToSend, mem_id, sock, goBack):
+def sendData(dataToSend, mem_id, sock, goBack):
 
     #determine length
     length_total = len(dataToSend)
@@ -61,7 +90,6 @@ def send(dataToSend, mem_id, sock, goBack):
     
     startnum = total_packs - goBack;
     packet_cnt = encode(goBack,2);
-
 
     for iteration in range(0,total_packs):
 
@@ -74,15 +102,25 @@ def send(dataToSend, mem_id, sock, goBack):
 
             packet_to_send = dataToSend[start:end];
             length = encode(len(packet_to_send),2);
-            print len(packet_to_send)
 
             aTalk = encode(0x809B,2);
             ppType = encode(01,2);
              
-            #print dst_addr+src_addr+aTalk+ppType+length+mem_id+packet_num+packet_cnt+packet_to_send
             sock.send(dst_addr+src_addr+aTalk+ppType+length+mem_id+packet_num+packet_cnt+packet_to_send);
 
             print "\n SENT packet %d to CG0" %iteration
+
+def sendArq(sock, expected):
+    arqBuff = [];
+    arqBuff.append(encode(expected,2));
+    
+    for i in range(0,62):
+        arqBuff.append('0');
+
+    arq = ''.join(arqBuff);
+
+    sock.send(arq);
+
     
 #encode integer to a byte in bigendian
 def encode(num, nbytes):
@@ -98,7 +136,15 @@ def encode(num, nbytes):
         arr.append(chr(num));
 
     return ''.join(arr);
-    
+
+def decode(num):
+    ords = [];
+    for i in range(0,len(num)):
+        raw = hex(ord(num[i]));
+        ords.append(raw[2:]);
+
+    numStr = ''.join(ords);
+    return int(numStr,16);
 
 def parseInput(argv):
     infile = '';
