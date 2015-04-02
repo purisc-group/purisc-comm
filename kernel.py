@@ -33,10 +33,10 @@ class Kernel:
             print "error - limit of 11 dimension"
             sys.exit(2);
 
-        globalMemory = np.zeros(self.globMem);
+        globalMemory = np.zeros(self.globMem, dtype=np.int);
 
-        startIndicies = np.zeros([dim,8]);
-        endIndicies = np.zeros([dim,8]);
+        startIndicies = np.zeros([dim,8], dtype=np.int);
+        endIndicies = np.zeros([dim,8], dtype=np.int);
 
         for i in range(0,dim):
             for core in range(0,8):
@@ -57,9 +57,10 @@ class Kernel:
                 for i in range(0, len(lin)):
                     globalMemory[nextGlobal] = lin[i];
                 
+        #globalMemory = np.zeros(10, dtype=np.int);
+        p = Popen(["python","purisc_io.py"], stdin=PIPE);
+        dataBufferArr = [];
 
-        # sendData(globalmemory)
-        sendData(globalMemory);
 
         for cg in range(0,4): #for each compute group
             localmem = copy(self.localMemory);
@@ -69,8 +70,17 @@ class Kernel:
                 localmem[self.indexMaxLocations[i][0]] = endIndicies[i][cg*2];
                 localmem[self.indexMaxLocations[i][1]] = endIndicies[i][cg*2+1];
 
-            #sendData(localmem)
-            print localmem
+            dataBufferArr.append(str(len(localmem)));
+            for dat in localmem:
+                dataBufferArr.append(str(dat));
+
+
+        dataBufferArr.append(str(len(globalMemory)));
+        for dat in globalMemory:
+            dataBufferArr.append(str(dat));
+
+        dataBuff = '\n'.join(dataBufferArr);
+        p.communicate(dataBuff);
 
 
 #opens the compiled machine code and request files
@@ -80,7 +90,7 @@ def readDataFromFile(kernelName):
     inFile = kernelName;
     machineCode = open(inFile + ".machine");
 
-    localMem = np.zeros([8*1024])
+    localMem = np.zeros([8*1024], dtype=np.int)
     for i,line in enumerate(machineCode):
         localMem[i] = int(line);
 
@@ -91,15 +101,15 @@ def readDataFromFile(kernelName):
 
     dimLocations = requestFile.readline().strip().split(",");
 
-    indexLocations = np.zeros([11,2]);
+    indexLocations = np.zeros([11,2],dtype=np.int);
     for i in range(0,11):
         indexLocations[i] = requestFile.readline().strip().split(",");
 
-    indexMaxLocations = np.zeros([11,2]);
+    indexMaxLocations = np.zeros([11,2],dtype=np.int);
     for i in range(0,11):
         indexMaxLocations[i] = requestFile.readline().strip().split(",");
 
-    args = np.zeros([argLen,3]);
+    args = np.zeros([argLen,3],dtype=np.int);
     for i in range(0,argLen):
         arg = requestFile.readline().strip();
         arg1,arg2 = arg.split(",");
@@ -122,32 +132,3 @@ def getNakedName(kernelName):
     idx = kernelName.rindex(".");
     return kernelName[:idx]
 
-def sendData(data):
-
-    p = Popen(["python","purisc_io.py"], stdin=PIPE);
-
-    dataBufferArr = [];
-
-    for dat in data:
-        dataBufferArr.append(str(dat));
-
-    dataBuff = '\n'.join(dataBufferArr);
-
-    p.communicate(dataBuff);
-
-
-
-def encode(num):
-
-    hexStr = hex(num)[2:]; #strip off the '0x'
-
-    while len(hexStr) < 4:
-        hexStr = "0" + hexStr;
-
-    hi = hexStr[:2];
-    hiInt = int(hi,16);
-
-    low = hexStr[2:];
-    lowInt = int(low,16);
-
-    return chr(hiInt) + chr(lowInt);
