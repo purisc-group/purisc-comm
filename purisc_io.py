@@ -16,9 +16,9 @@ def main(argv):
     sock.settimeout(0.00002288);
     sock.bind(("eth0", 0))
             
-    for i in range(0,5):
+    for i in range(0,9):
 
-        mem_id = chr(0)+chr(int(i));
+        mem_id = chr(i/2)+chr(int(i)); #first byte is workgroup number, second is core number. For global memory, sent last the core num doesn't matter
         packet_data = []; 
 
         length = int(infile.readline());

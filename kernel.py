@@ -15,7 +15,7 @@ class Kernel:
         self.kernelName = kernelName;
 
     def compile(self):
-        call(["python", self.compilerPath + "/compiler.py","-i", self.kernelName]); #call the compiler
+        call(["python", self.compilerPath + "/compiler.py","-i", self.kernelName, '-b', '32', '-z', '-l', 'cl']); #call the compiler
         self.localMemory, self.indexLocations, self.indexMaxLocations, args, self.dimLocations, self.flagLocations = readDataFromFile(getNakedName(self.kernelName));
         
         self.arguments = [];
@@ -48,7 +48,7 @@ class Kernel:
             sys.exit(2);
 
         globalMemory = np.zeros(GLOB_MEM_LENGTH, dtype=np.int);
-        globalMemory[8] = self.outputLen;
+        globalMemory[16] = self.outputLen;
 
         startIndicies = np.zeros([dim,8], dtype=np.int);
         endIndicies = np.zeros([dim,8], dtype=np.int);
@@ -58,7 +58,7 @@ class Kernel:
                  startIndicies[i][core] = offset[i] + core*size[i]/8;
                  endIndicies[i][core] = offset[i] + (core+1)*size[i]/8;
 
-        nextGlobal = 10;
+        nextGlobal = 18;
         for i,arg in enumerate(self.arguments):
             if arg.argType == 0: #local arguments
                 self.localMemory[arg.location1] = arg.data;
@@ -74,36 +74,35 @@ class Kernel:
                         globalMemory[nextGlobal] = lin[i];
                         nextGlobal += 1;
                 elif i == self.output:
-                    globalMemory[9] = nextGlobal;
+                    globalMemory[17] = nextGlobal;
                     nextGlobal += self.outputLen;
 
-        p = Popen(["python","purisc_io_noarq.py"], stdin=PIPE, stdout=PIPE);
+        p = Popen(["sudo","python","purisc_io.py"], stdin=PIPE, stdout=PIPE);
         dataBufferArr = [];
 
 
-        for cg in range(0,4): #for each compute group
+        for core in range(0,8): #for each compute group
             localmem = copy(self.localMemory);
             for i in range(0,dim):
-                localmem[self.indexLocations[i][0]] = startIndicies[i][cg*2];
-                localmem[self.indexLocations[i][1]] = startIndicies[i][cg*2+1];
-                localmem[self.indexMaxLocations[i][0]] = endIndicies[i][cg*2];
-                localmem[self.indexMaxLocations[i][1]] = endIndicies[i][cg*2+1];
+                localmem[self.indexLocations[i][core % 2]] = startIndicies[i][core];
+                localmem[self.indexMaxLocations[i][core % 2]] = endIndicies[i][core];
                 localmem[int(self.dimLocations[0])] = dim;
                 localmem[int(self.dimLocations[1])] = dim;
 
-            localmem[int(self.flagLocations[0])] = cg*2;
-            localmem[int(self.flagLocations[1])] = cg*2 + 1;
+            localmem[int(self.flagLocations[core % 2])] = core;
 
-            dataBufferArr.append(str(len(localmem)));
-            if cg == 2:
-                for dat in localmem:
-                    dataBufferArr.append(str(dat));
-                    print dat
+            dataBufferArr.append(str(8*1024/2 - 32));
+            start = 32 + (8*1024/2)*(core % 2);
+            end = (8*1024/2)*(1 + core%2);
+            for i in range(start,end):
+                if core == 1:
+                    print localmem[i]
+                dataBufferArr.append(str(localmem[i]));
 
 
-        dataBufferArr.append(str(len(globalMemory)));
-        for dat in globalMemory:
-            dataBufferArr.append(str(dat));
+        dataBufferArr.append(str(len(globalMemory) - 16));
+        for i in range(16,len(globalMemory)):
+            dataBufferArr.append(str(globalMemory[i]));
 
         dataBuff = '\n'.join(dataBufferArr);
         

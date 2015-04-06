@@ -16,7 +16,7 @@ def main(argv):
     out = np.zeros([10,20]);
 
     kernel.setArg(0,inn);
-    kernel.setArg(1,out);
+    kernel.setOutput(1,out);
 
     kernel.enqueue(2,[0,0],[10,20]);
 
